@@ -78,5 +78,38 @@ class Trie
     node.is_covered = true
     -removed
   end
+
+  # 一時的に引数の文字列sをトライ木から削除。
+  # 復元時はtemp_restoreを使う。
+  def temp_remove(s)
+    node = @root
+    path = []
+    s.each_byte do |b|
+      path << node
+      idx = b - 'a'.ord
+      break unless node.children[idx]
+      node = node.children[idx]
+    end
+    path << node
+    path.each { |n| n.road_count -= 1 }
+    return path
+  end
+
+  def temp_restore(path)
+    path.each { |n| n.road_count += 1 }
+  end
+
+  def lcp(s)
+    node = @root
+    len = 0
+    s.each_byte do |b|
+      idx = b - 'a'.ord
+      return len if node.children[idx].nil?
+      node = node.children[idx]
+      break if node.road_count == 0
+      len += 1
+    end
+    len
+  end
 end
 
