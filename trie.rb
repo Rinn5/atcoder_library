@@ -1,3 +1,10 @@
+# 仕様補足
+# insert時の返り値は[新しいnodeが追加されたかのフラグ、最深根の深さ、登録されている最深根をとおる文字列の数]
+# coverで何にもヒットされなかったら精査されたところのnodeが自動で作られる
+# coverの返り値
+# coverされていれば1
+#      されていなければ0
+
 class TrieNode
   attr_accessor :children, :is_covered, :road_count
 
@@ -13,32 +20,41 @@ class Trie
     @root = TrieNode.new
   end
 
-  # 追加クエリ（t == 2）
   def insert(s)
     node = @root
     path = []
     already_covered = false
-
+    lcp_depth, lcp_sum, lcp_total = nil, nil, 0
+  
     s.each_byte do |b|
       path << node
-      already_covered ||= node.is_covered
+      if node.is_covered
+        path.each { |n| n.road_count -= 1 }
+        return [0, lcp_depth, lcp_sum, lcp_total]
+      end
+  
       idx = b - 'a'.ord
+      if lcp_sum.nil? && node.road_count > 0
+        lcp_sum = node.road_count
+        lcp_depth = path.length - 1
+      end
       node.children[idx] ||= TrieNode.new
       node = node.children[idx]
+      lcp_total += node.road_count
+  
+      node.road_count += 1
     end
 
     path << node
-    already_covered ||= node.is_covered
-
-    unless already_covered
-      path.each { |n| n.road_count += 1 }
-      return 1
+    if node.is_covered
+      path.each { |n| n.road_count -= 1 }
+      return [0, lcp_depth, lcp_sum, lcp_total]
     end
-    
-    0
+  
+    [1, lcp_depth, lcp_sum, lcp_total]
   end
+  
 
-  # カバークエリ（t == 1）フラグを立てる
   def cover(s)
     node = @root
     path = []
@@ -64,13 +80,3 @@ class Trie
   end
 end
 
-if __FILE__ == $0 then
-  trie = Trie.new
-
-  puts trie.insert("apple")    # => 1（初めてなので追加される）
-  puts trie.insert("apple")    # => 0（すでにカバーされているので追加されない）
-  puts trie.cover("app")       # => 0（"app"自体はまだ追加されていないので何も削除されない）
-  puts trie.insert("app")      # => 1
-  puts trie.cover("app")       # => -1（"app"をカバー、1件削除）
-  puts trie.insert("app")      # => 0（すでにカバーされたので追加されない）  
-end
